@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Copy, Plus, RefreshCw, Mail as MailIcon, Trash2, ArrowRight } from "lucide-react";
+import { Copy, Plus, RefreshCw, Mail as MailIcon, Trash2, ArrowRight, ChevronDown, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +10,9 @@ import {
   useCreateMailbox, 
   useGenerateMailbox,
   useGetStats,
-  useDeleteMailbox
+  useDeleteMailbox,
+  useListDomains,
+  getListDomainsQueryKey,
 } from "@workspace/api-client-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,6 +22,15 @@ export default function Home() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [localPart, setLocalPart] = useState("");
+  const [selectedDomain, setSelectedDomain] = useState("");
+  const [showDomainPicker, setShowDomainPicker] = useState(false);
+
+  const { data: domainsData, isLoading: domainsLoading } = useListDomains({
+    query: { queryKey: getListDomainsQueryKey() }
+  });
+
+  const domains = domainsData?.domains ?? [];
+  const activeDomain = selectedDomain || domains[0]?.name || "tokito.me";
 
   const { data: mailboxesData, isLoading, refetch } = useListMailboxes({ 
     query: { 
@@ -36,20 +47,21 @@ export default function Home() {
 
   const handleCreateCustom = () => {
     if (!localPart.trim()) return;
-    createMailbox.mutate({ data: { localPart: localPart.trim() } }, {
+    createMailbox.mutate({ data: { localPart: localPart.trim(), domain: activeDomain } }, {
       onSuccess: (data) => {
         toast({ title: "Mailbox created" });
         queryClient.invalidateQueries({ queryKey: getListMailboxesQueryKey() });
         setLocation(`/inbox/${data.address}`);
       },
-      onError: () => {
-        toast({ title: "Failed to create mailbox", variant: "destructive" });
+      onError: (err: unknown) => {
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        toast({ title: msg ?? "Failed to create mailbox", variant: "destructive" });
       }
     });
   };
 
   const handleGenerate = () => {
-    generateMailbox.mutate(undefined, {
+    generateMailbox.mutate({ data: { domain: activeDomain } } as never, {
       onSuccess: (data) => {
         toast({ title: "Mailbox generated" });
         queryClient.invalidateQueries({ queryKey: getListMailboxesQueryKey() });
@@ -85,21 +97,54 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Domain Selector */}
+      {domains.length > 1 && (
+        <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
+          <Globe className="size-4 text-primary shrink-0" />
+          <span className="text-sm text-muted-foreground">Domain:</span>
+          <div className="relative">
+            <button
+              onClick={() => setShowDomainPicker(!showDomainPicker)}
+              className="flex items-center gap-2 font-mono text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              {activeDomain}
+              <ChevronDown className={`size-3.5 transition-transform ${showDomainPicker ? 'rotate-180' : ''}`} />
+            </button>
+            {showDomainPicker && (
+              <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg overflow-hidden min-w-[200px]">
+                {domains.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => { setSelectedDomain(d.name); setShowDomainPicker(false); }}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-mono hover:bg-muted/50 transition-colors text-left ${activeDomain === d.name ? 'text-primary bg-primary/5' : 'text-foreground'}`}
+                  >
+                    <span>{d.name}</span>
+                    {activeDomain === d.name && <span className="text-xs text-primary ml-4">active</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {domainsLoading && <span className="text-xs text-muted-foreground animate-pulse ml-auto">Loading domains...</span>}
+          {!domainsLoading && (
+            <span className="text-xs text-muted-foreground ml-auto">{domains.length} domain{domains.length !== 1 ? 's' : ''} available</span>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Custom Address */}
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Custom Address</h2>
           <div className="flex items-center gap-2 mb-4">
             <div className="relative flex-1">
               <Input
                 placeholder="developer"
-                className="pr-[90px] font-mono"
+                className="font-mono pr-3"
                 value={localPart}
                 onChange={(e) => setLocalPart(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateCustom()}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono pointer-events-none">
-                @tokito.me
-              </div>
             </div>
             <Button 
               onClick={handleCreateCustom} 
@@ -108,16 +153,21 @@ export default function Home() {
               Create
             </Button>
           </div>
-          <div className="text-xs text-muted-foreground">
-            Specify a local part to create a named inbox.
+          <div className="text-xs text-muted-foreground font-mono">
+            {localPart.trim() ? (
+              <span className="text-primary">{localPart.trim()}@{activeDomain}</span>
+            ) : (
+              <span>yourname@{activeDomain}</span>
+            )}
           </div>
         </div>
 
+        {/* Random Address */}
         <div className="bg-card border border-primary/20 rounded-xl p-6 shadow-sm flex flex-col items-start justify-center relative overflow-hidden">
           <div className="absolute -right-12 -top-12 size-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
           <h2 className="text-lg font-semibold mb-2 text-foreground">Random Address</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Generate an instantly available cryptographic inbox.
+            Generate an instantly available inbox at <span className="font-mono text-primary">@{activeDomain}</span>.
           </p>
           <Button 
             onClick={handleGenerate} 
@@ -141,8 +191,13 @@ export default function Home() {
             <div className="text-2xl font-semibold">{stats.totalMessages}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1 font-mono">Domain</div>
-            <div className="text-lg font-medium font-mono text-primary mt-1">{stats.domain}</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1 font-mono">Domains</div>
+            <div className="text-sm font-mono text-primary mt-1 flex flex-wrap gap-1">
+              {domains.length > 0
+                ? domains.map(d => <span key={d.id} className="bg-primary/10 px-1.5 py-0.5 rounded text-xs">{d.name}</span>)
+                : <span>{stats.domain}</span>
+              }
+            </div>
           </div>
         </div>
       )}

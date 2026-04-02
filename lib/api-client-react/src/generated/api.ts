@@ -25,6 +25,7 @@ import type {
   InboundEmailBody,
   InboundEmailResponse,
   ListApiKeysResponse,
+  ListDomainsResponse,
   ListMailboxesResponse,
   ListMessagesResponse,
   Mailbox,
@@ -1271,6 +1272,81 @@ export function useGetStats<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List available domains from Cloudflare
+ */
+export const getListDomainsUrl = () => {
+  return `/api/domains`;
+};
+
+export const listDomains = async (
+  options?: RequestInit,
+): Promise<ListDomainsResponse> => {
+  return customFetch<ListDomainsResponse>(getListDomainsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListDomainsQueryKey = () => {
+  return [`/api/domains`] as const;
+};
+
+export const getListDomainsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listDomains>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listDomains>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListDomainsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listDomains>>> = ({
+    signal,
+  }) => listDomains({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listDomains>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListDomainsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listDomains>>
+>;
+export type ListDomainsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List available domains from Cloudflare
+ */
+
+export function useListDomains<
+  TData = Awaited<ReturnType<typeof listDomains>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listDomains>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListDomainsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

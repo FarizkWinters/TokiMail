@@ -8,12 +8,14 @@ import {
   ListMailboxesResponse,
   GetMailboxResponse,
   GetStatsResponse,
+  ListDomainsResponse,
 } from "@workspace/api-zod";
 import { generateRandomLocalPart } from "../lib/mailbox-utils";
+import { getCloudfareDomains, isValidDomain } from "../lib/cloudflare";
 
 const router: IRouter = Router();
 
-const DOMAIN = process.env.MAIL_DOMAIN ?? "tokito.me";
+const DEFAULT_DOMAIN = process.env.MAIL_DOMAIN ?? "tokito.me";
 
 async function getMailboxWithCounts(address: string) {
   const [mailbox] = await db
@@ -36,6 +38,11 @@ async function getMailboxWithCounts(address: string) {
     unreadCount: Number(countResult?.unread ?? 0),
   };
 }
+
+router.get("/domains", async (_req, res): Promise<void> => {
+  const domains = await getCloudfareDomains();
+  res.json(ListDomainsResponse.parse({ domains }));
+});
 
 router.get("/mailboxes", async (req, res): Promise<void> => {
   const mailboxes = await db.select().from(mailboxesTable).orderBy(mailboxesTable.createdAt);
@@ -62,7 +69,18 @@ router.get("/mailboxes", async (req, res): Promise<void> => {
 
 router.post("/mailboxes/generate", async (req, res): Promise<void> => {
   const localPart = generateRandomLocalPart();
-  const address = `${localPart}@${DOMAIN}`;
+  const body = req.body as { domain?: string } | undefined;
+  let domain = body?.domain ?? DEFAULT_DOMAIN;
+
+  if (domain !== DEFAULT_DOMAIN) {
+    const valid = await isValidDomain(domain);
+    if (!valid) {
+      res.status(400).json({ error: `Domain '${domain}' is not in your Cloudflare account` });
+      return;
+    }
+  }
+
+  const address = `${localPart}@${domain}`;
 
   const [mailbox] = await db
     .insert(mailboxesTable)
@@ -79,8 +97,18 @@ router.post("/mailboxes", async (req, res): Promise<void> => {
     return;
   }
 
+  const domain = parsed.data.domain ?? DEFAULT_DOMAIN;
+
+  if (domain !== DEFAULT_DOMAIN) {
+    const valid = await isValidDomain(domain);
+    if (!valid) {
+      res.status(400).json({ error: `Domain '${domain}' is not in your Cloudflare account` });
+      return;
+    }
+  }
+
   const localPart = parsed.data.localPart ?? generateRandomLocalPart();
-  const address = `${localPart}@${DOMAIN}`;
+  const address = `${localPart}@${domain}`;
   const name = parsed.data.name ?? null;
 
   const [existing] = await db
@@ -142,6 +170,7 @@ router.delete("/mailboxes/:address", async (req, res): Promise<void> => {
 });
 
 router.get("/stats", async (_req, res): Promise<void> => {
+  const domains = await getCloudfareDomains();
   const [mailboxCount] = await db.select({ total: count() }).from(mailboxesTable);
   const [msgCount] = await db.select({
     total: count(),
@@ -152,7 +181,7 @@ router.get("/stats", async (_req, res): Promise<void> => {
     totalMailboxes: Number(mailboxCount?.total ?? 0),
     totalMessages: Number(msgCount?.total ?? 0),
     totalUnread: Number(msgCount?.unread ?? 0),
-    domain: DOMAIN,
+    domain: domains[0]?.name ?? DEFAULT_DOMAIN,
   }));
 });
 

@@ -46,6 +46,10 @@ export const CreateMailboxBody = zod.object({
     .describe(
       "The part before @domain. If omitted, a random one is generated.",
     ),
+  domain: zod
+    .string()
+    .nullish()
+    .describe("Domain to use. Defaults to MAIL_DOMAIN env var."),
   name: zod.string().nullish().describe("Optional display name"),
 });
 
@@ -200,4 +204,17 @@ export const GetStatsResponse = zod.object({
   totalMessages: zod.number(),
   totalUnread: zod.number(),
   domain: zod.string(),
+});
+
+/**
+ * @summary List available domains from Cloudflare
+ */
+export const ListDomainsResponse = zod.object({
+  domains: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      status: zod.string(),
+    }),
+  ),
 });

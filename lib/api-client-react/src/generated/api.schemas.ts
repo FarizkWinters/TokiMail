@@ -32,6 +32,8 @@ export interface ListMailboxesResponse {
 export interface CreateMailboxBody {
   /** The part before @domain. If omitted, a random one is generated. */
   localPart?: string | null;
+  /** Domain to use. Defaults to MAIL_DOMAIN env var. */
+  domain?: string | null;
   /** Optional display name */
   name?: string | null;
 }
@@ -114,4 +116,14 @@ export interface StatsResponse {
   totalMessages: number;
   totalUnread: number;
   domain: string;
+}
+
+export interface DomainInfo {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface ListDomainsResponse {
+  domains: DomainInfo[];
 }

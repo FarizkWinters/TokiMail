@@ -327,6 +327,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/StatsResponse"
 
+  /domains:
+    get:
+      operationId: listDomains
+      tags: [mailboxes]
+      summary: List available domains from Cloudflare
+      responses:
+        "200":
+          description: List of available domains
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListDomainsResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -396,6 +409,10 @@ components:
         localPart:
           type: string
           description: "The part before @domain. If omitted, a random one is generated."
+          nullable: true
+        domain:
+          type: string
+          description: "Domain to use. Defaults to MAIL_DOMAIN env var."
           nullable: true
         name:
           type: string
@@ -600,3 +617,27 @@ components:
         - totalMessages
         - totalUnread
         - domain
+
+    DomainInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+      required:
+        - id
+        - name
+        - status
+
+    ListDomainsResponse:
+      type: object
+      properties:
+        domains:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainInfo"
+      required:
+        - domains

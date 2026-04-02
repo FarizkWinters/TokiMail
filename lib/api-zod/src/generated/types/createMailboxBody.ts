@@ -9,6 +9,8 @@
 export interface CreateMailboxBody {
   /** The part before @domain. If omitted, a random one is generated. */
   localPart?: string | null;
+  /** Domain to use. Defaults to MAIL_DOMAIN env var. */
+  domain?: string | null;
   /** Optional display name */
   name?: string | null;
 }
