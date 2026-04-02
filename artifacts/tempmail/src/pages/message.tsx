@@ -1,6 +1,6 @@
 import { useRoute, Link, useLocation } from "wouter";
 import { useGetMessage, useDeleteMessage, useMarkMessageRead, getListMessagesQueryKey } from "@workspace/api-client-react";
-import { ArrowLeft, Trash2, Code2, FileText, ExternalLink } from "lucide-react";
+import { ArrowLeft, Trash2, Code2, FileText, ExternalLink, KeyRound, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,46 @@ import { useEffect, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { extractOTP } from "@/lib/otp";
+
+function PlainTextBody({ text }: { text: string }) {
+  const paragraphs = text.split(/\n{2,}/);
+  return (
+    <div className="text-foreground/90 text-sm leading-relaxed space-y-3">
+      {paragraphs.map((para, i) => {
+        const lines = para.split(/\n/);
+        return (
+          <p key={i} className="whitespace-pre-wrap break-words">
+            {lines.map((line, j) => {
+              const urlRegex = /(https?:\/\/[^\s]+)/g;
+              const parts = line.split(urlRegex);
+              return (
+                <span key={j}>
+                  {parts.map((part, k) =>
+                    urlRegex.test(part) ? (
+                      <a
+                        key={k}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline underline-offset-2 hover:opacity-80 break-all"
+                      >
+                        {part}
+                      </a>
+                    ) : (
+                      <span key={k}>{part}</span>
+                    )
+                  )}
+                  {j < lines.length - 1 && <br />}
+                </span>
+              );
+            })}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MessageView() {
   const [, params] = useRoute("/message/:address/:id");
@@ -16,6 +56,7 @@ export default function MessageView() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [otpCopied, setOtpCopied] = useState(false);
 
   const { data: msg, isLoading } = useGetMessage(address, id, {
     query: { enabled: !!(address && id) }
@@ -47,6 +88,13 @@ export default function MessageView() {
     });
   };
 
+  const handleCopyOTP = (otp: string) => {
+    navigator.clipboard.writeText(otp);
+    setOtpCopied(true);
+    toast({ title: `OTP ${otp} copied!` });
+    setTimeout(() => setOtpCopied(false), 2000);
+  };
+
   if (isLoading) {
     return (
       <div className="p-8 space-y-4 max-w-4xl mx-auto">
@@ -60,6 +108,8 @@ export default function MessageView() {
   if (!msg) {
     return <div className="p-8 text-center text-muted-foreground">Message not found</div>;
   }
+
+  const otp = extractOTP(msg.subject || "") || extractOTP(msg.bodyText || "");
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -83,22 +133,49 @@ export default function MessageView() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
-          <div className="space-y-4">
+        <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-4">
+          {otp && (
+            <div
+              className="flex items-center justify-between gap-4 bg-primary/10 border border-primary/40 rounded-xl px-5 py-4 cursor-pointer hover:bg-primary/15 transition-colors"
+              onClick={() => handleCopyOTP(otp)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="size-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <KeyRound className="size-4 text-primary" />
+                </div>
+                <div>
+                  <div className="text-xs text-primary/70 font-medium mb-0.5">Kode OTP Terdeteksi</div>
+                  <div className="text-2xl font-bold font-mono tracking-[0.3em] text-primary">{otp}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-primary/70 text-sm font-medium">
+                {otpCopied ? (
+                  <span className="text-primary font-semibold">Tersalin!</span>
+                ) : (
+                  <>
+                    <Copy className="size-4" />
+                    <span>Salin</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {msg.subject || "(No Subject)"}
             </h1>
             
             <div className="bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="text-sm text-muted-foreground mb-1">From</div>
-                <div className="font-medium flex items-center gap-2">
+                <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">From</div>
+                <div className="font-medium flex items-center gap-2 flex-wrap">
                   {msg.fromName && <span>{msg.fromName}</span>}
                   <span className="text-muted-foreground font-mono text-sm">&lt;{msg.fromAddress}&gt;</span>
                 </div>
               </div>
               <div className="sm:text-right">
-                <div className="text-sm text-muted-foreground mb-1">Received</div>
+                <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Received</div>
                 <div className="font-mono text-sm">
                   {format(new Date(msg.receivedAt), "MMM d, yyyy HH:mm:ss")}
                 </div>
@@ -126,7 +203,7 @@ export default function MessageView() {
                 </TabsList>
               </div>
               
-              <div className="p-0 bg-white dark:bg-[#0a0a0a]">
+              <div className="p-0">
                 {msg.bodyHtml && (
                   <TabsContent value="html" className="m-0 p-4 min-h-[400px]">
                     <iframe 
@@ -137,10 +214,12 @@ export default function MessageView() {
                     />
                   </TabsContent>
                 )}
-                <TabsContent value="text" className="m-0 p-6 min-h-[400px]">
-                  <pre className="whitespace-pre-wrap font-mono text-sm text-foreground/90 font-sans">
-                    {msg.bodyText || "No plain text content."}
-                  </pre>
+                <TabsContent value="text" className="m-0 p-6 min-h-[200px]">
+                  {msg.bodyText ? (
+                    <PlainTextBody text={msg.bodyText} />
+                  ) : (
+                    <p className="text-muted-foreground text-sm italic">No plain text content.</p>
+                  )}
                 </TabsContent>
                 {msg.bodyHtml && (
                   <TabsContent value="source" className="m-0 p-0 min-h-[400px]">

@@ -5,14 +5,14 @@ import {
   useGetMailbox,
   useDeleteMessage,
   useMarkMessageRead,
-  useDeleteMailbox
 } from "@workspace/api-client-react";
-import { formatDistanceToNow, format } from "date-fns";
-import { ArrowLeft, Copy, Trash2, RefreshCw, Mail, CheckCircle2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ArrowLeft, Copy, Trash2, RefreshCw, Mail, CheckCircle2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { extractOTP } from "@/lib/otp";
 
 export default function Inbox() {
   const [, params] = useRoute("/inbox/:address");
@@ -35,9 +35,9 @@ export default function Inbox() {
   const deleteMessage = useDeleteMessage();
   const markRead = useMarkMessageRead();
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(address);
-    toast({ title: "Copied to clipboard" });
+  const copyToClipboard = (text: string, label = "Copied to clipboard") => {
+    navigator.clipboard.writeText(text);
+    toast({ title: label });
   };
 
   const handleDelete = (id: number, e: React.MouseEvent) => {
@@ -75,7 +75,7 @@ export default function Inbox() {
           ) : (
             <div className="flex items-center gap-2">
               <span className="font-mono text-lg font-semibold">{address}</span>
-              <Button variant="ghost" size="icon" className="size-8" onClick={copyToClipboard}>
+              <Button variant="ghost" size="icon" className="size-8" onClick={() => copyToClipboard(address)}>
                 <Copy className="size-4" />
               </Button>
             </div>
@@ -106,46 +106,62 @@ export default function Inbox() {
           </div>
         ) : (
           <div className="space-y-3">
-            {messagesData?.messages.map((msg) => (
-              <Link key={msg.id} href={`/message/${address}/${msg.id}`} className="block">
-                <div className={`p-4 border rounded-xl flex items-start gap-4 transition-all hover:border-primary/50 group ${
-                  !msg.isRead 
-                    ? "bg-primary/5 border-primary/20" 
-                    : "bg-card border-border"
-                }`}>
-                  {!msg.isRead ? (
-                    <div className="size-2 mt-2 rounded-full bg-primary shrink-0" />
-                  ) : (
-                    <div className="size-2 mt-2 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 truncate">
+            {messagesData?.messages.map((msg) => {
+              const otp = extractOTP(msg.subject || "");
+              return (
+                <Link key={msg.id} href={`/message/${address}/${msg.id}`} className="block">
+                  <div className={`p-4 border rounded-xl flex items-start gap-4 transition-all hover:border-primary/50 group ${
+                    !msg.isRead 
+                      ? "bg-primary/5 border-primary/20" 
+                      : "bg-card border-border"
+                  }`}>
+                    {!msg.isRead ? (
+                      <div className="size-2 mt-2 rounded-full bg-primary shrink-0" />
+                    ) : (
+                      <div className="size-2 mt-2 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
                         <span className="font-semibold truncate">
-                          {msg.fromName ? `${msg.fromName} <${msg.fromAddress}>` : msg.fromAddress}
+                          {msg.fromName ? `${msg.fromName}` : msg.fromAddress}
+                        </span>
+                        <span className="text-xs text-muted-foreground shrink-0 ml-4 font-mono">
+                          {formatDistanceToNow(new Date(msg.receivedAt))} ago
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground shrink-0 ml-4 font-mono">
-                        {formatDistanceToNow(new Date(msg.receivedAt))} ago
-                      </span>
+                      <div className={`text-sm truncate mb-2 ${!msg.isRead ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                        {msg.subject || "(No Subject)"}
+                      </div>
+                      {otp && (
+                        <div
+                          className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary rounded-lg px-3 py-1.5 text-sm font-mono font-bold cursor-pointer hover:bg-primary/20 transition-colors"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            copyToClipboard(otp, `OTP ${otp} copied!`);
+                          }}
+                          title="Click to copy OTP"
+                        >
+                          <KeyRound className="size-3.5" />
+                          <span className="tracking-widest">{otp}</span>
+                          <Copy className="size-3" opacity={0.7} />
+                        </div>
+                      )}
                     </div>
-                    <div className={`text-base truncate ${!msg.isRead ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                      {msg.subject || "(No Subject)"}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    {!msg.isRead && (
-                      <Button variant="ghost" size="icon" onClick={(e) => handleMarkRead(msg.id, e)} title="Mark as read">
-                        <CheckCircle2 className="size-4" />
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      {!msg.isRead && (
+                        <Button variant="ghost" size="icon" onClick={(e) => handleMarkRead(msg.id, e)} title="Mark as read">
+                          <CheckCircle2 className="size-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(msg.id, e)}>
+                        <Trash2 className="size-4" />
                       </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(msg.id, e)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
