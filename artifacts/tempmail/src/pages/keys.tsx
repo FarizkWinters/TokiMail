@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAppConfig } from "@/lib/use-app-config";
 
 export default function KeysPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const config = useAppConfig();
   const [name, setName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
 
@@ -55,7 +57,7 @@ export default function KeysPage() {
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">API Keys</h1>
-        <p className="text-muted-foreground">Manage keys for programmatic access to the TempMail API.</p>
+        <p className="text-muted-foreground">Manage keys for programmatic access to the {config.appName} API.</p>
       </div>
 
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm">

@@ -1,6 +1,10 @@
 import { BookOpen } from "lucide-react";
+import { useAppConfig } from "@/lib/use-app-config";
 
 export default function DocsPage() {
+  const config = useAppConfig();
+  const domain = typeof window !== "undefined" ? window.location.hostname : "yourdomain.com";
+
   const endpoints = [
     {
       method: "GET",
@@ -10,7 +14,7 @@ export default function DocsPage() {
   "mailboxes": [
     {
       "id": 1,
-      "address": "test@tokito.me",
+      "address": "test@example.com",
       "createdAt": "2024-01-01...",
       "messageCount": 5,
       "unreadCount": 2
@@ -26,7 +30,7 @@ export default function DocsPage() {
       req: `{ "localPart": "developer" }`,
       res: `{
   "id": 2,
-  "address": "developer@tokito.me",
+  "address": "developer@example.com",
   ...
 }`
     },
@@ -57,17 +61,17 @@ export default function DocsPage() {
           <BookOpen className="size-8 text-primary" />
           API Documentation
         </h1>
-        <p className="text-muted-foreground">REST API reference for programmatic integration with tokito.me.</p>
+        <p className="text-muted-foreground">REST API reference for programmatic integration with {config.appName}.</p>
       </div>
 
       <div className="prose prose-invert max-w-none">
         <p>
           All requests must include your API key in the <code>Authorization</code> header using the Bearer scheme.
-          Base URL is <code>https://tokito.me</code>.
+          Base URL is <code>https://{domain}</code>.
         </p>
 
         <div className="bg-[#1e1e1e] p-4 rounded-lg mt-4 border border-border">
-          <code className="text-primary font-mono">Authorization: Bearer tm_xyz123</code>
+          <code className="text-primary font-mono">Authorization: Bearer tmk_your_api_key</code>
         </div>
       </div>
 

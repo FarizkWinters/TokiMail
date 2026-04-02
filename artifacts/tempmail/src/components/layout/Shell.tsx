@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Mail, KeyRound, BookOpen, Menu, Code2, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
+import { useAppConfig } from "@/lib/use-app-config";
 
 interface ShellProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ export function Shell({ children }: ShellProps) {
   const { data: health } = useHealthCheck({
     query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 60000 }
   });
+  const config = useAppConfig();
 
   const links = [
     { href: "/", label: "Mailboxes", icon: Mail },
@@ -27,7 +29,7 @@ export function Shell({ children }: ShellProps) {
             <div className="size-6 bg-primary flex items-center justify-center rounded text-primary-foreground">
               <Code2 className="size-4" />
             </div>
-            <span className="tracking-tight text-base">tokito.me</span>
+            <span className="tracking-tight text-base">{config.appName}</span>
           </Link>
         </div>
         <div className="p-4 flex-1 overflow-y-auto">
@@ -72,8 +74,8 @@ export function Shell({ children }: ShellProps) {
               )}
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <span>TempMail API</span>
-              <span className="font-mono opacity-50">v0.1.0</span>
+              <span>{config.appName} API</span>
+              <span className="font-mono opacity-50">v{config.version}</span>
             </div>
           </div>
         </div>
@@ -84,7 +86,7 @@ export function Shell({ children }: ShellProps) {
           <Button variant="ghost" size="icon" className="-ml-2 mr-2">
             <Menu className="size-4" />
           </Button>
-          <span className="font-bold tracking-tight">tokito.me</span>
+          <span className="font-bold tracking-tight">{config.appName}</span>
         </header>
 
         <main className="flex-1 overflow-y-auto w-full relative">
