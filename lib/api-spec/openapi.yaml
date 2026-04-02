@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TempMail API - Temporary email service using custom domain
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: mailboxes
+    description: Mailbox management
+  - name: messages
+    description: Email message operations
+  - name: apikeys
+    description: API key management
+  - name: inbound
+    description: Inbound email webhook
 paths:
   /healthz:
     get:
@@ -24,6 +32,301 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /mailboxes:
+    get:
+      operationId: listMailboxes
+      tags: [mailboxes]
+      summary: List all mailboxes
+      description: Returns all created mailboxes
+      responses:
+        "200":
+          description: List of mailboxes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListMailboxesResponse"
+    post:
+      operationId: createMailbox
+      tags: [mailboxes]
+      summary: Create a mailbox
+      description: Create a new mailbox with a custom or randomly generated address
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMailboxBody"
+      responses:
+        "201":
+          description: Mailbox created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mailbox"
+        "409":
+          description: Address already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mailboxes/generate:
+    post:
+      operationId: generateMailbox
+      tags: [mailboxes]
+      summary: Generate a random mailbox
+      description: Generate a mailbox with a random address
+      responses:
+        "201":
+          description: Mailbox generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mailbox"
+
+  /mailboxes/{address}:
+    get:
+      operationId: getMailbox
+      tags: [mailboxes]
+      summary: Get mailbox info
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mailbox info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mailbox"
+        "404":
+          description: Mailbox not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteMailbox
+      tags: [mailboxes]
+      summary: Delete a mailbox
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Mailbox deleted
+        "404":
+          description: Mailbox not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mailboxes/{address}/messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: List messages in a mailbox
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListMessagesResponse"
+        "404":
+          description: Mailbox not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mailboxes/{address}/messages/{id}:
+    get:
+      operationId: getMessage
+      tags: [messages]
+      summary: Get a specific message
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Message detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageDetail"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteMessage
+      tags: [messages]
+      summary: Delete a message
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Message deleted
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mailboxes/{address}/messages/{id}/read:
+    patch:
+      operationId: markMessageRead
+      tags: [messages]
+      summary: Mark message as read
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Message marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageSummary"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /keys:
+    get:
+      operationId: listApiKeys
+      tags: [apikeys]
+      summary: List API keys
+      responses:
+        "200":
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListApiKeysResponse"
+    post:
+      operationId: createApiKey
+      tags: [apikeys]
+      summary: Create an API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyBody"
+      responses:
+        "201":
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyWithSecret"
+
+  /keys/{id}:
+    delete:
+      operationId: deleteApiKey
+      tags: [apikeys]
+      summary: Delete an API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: API key deleted
+        "404":
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /inbound:
+    post:
+      operationId: inboundEmail
+      tags: [inbound]
+      summary: Receive inbound email from Cloudflare Worker
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundEmailBody"
+      responses:
+        "200":
+          description: Email processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboundEmailResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [mailboxes]
+      summary: Get service stats
+      responses:
+        "200":
+          description: Service statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +337,266 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Mailbox:
+      type: object
+      properties:
+        id:
+          type: integer
+        address:
+          type: string
+        name:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastActivity:
+          type: string
+          format: date-time
+          nullable: true
+        messageCount:
+          type: integer
+        unreadCount:
+          type: integer
+      required:
+        - id
+        - address
+        - createdAt
+        - messageCount
+        - unreadCount
+
+    ListMailboxesResponse:
+      type: object
+      properties:
+        mailboxes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Mailbox"
+        total:
+          type: integer
+      required:
+        - mailboxes
+        - total
+
+    CreateMailboxBody:
+      type: object
+      properties:
+        localPart:
+          type: string
+          description: "The part before @domain. If omitted, a random one is generated."
+          nullable: true
+        name:
+          type: string
+          description: Optional display name
+          nullable: true
+
+    MessageSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        mailboxAddress:
+          type: string
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+          nullable: true
+        subject:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        isRead:
+          type: boolean
+        hasHtml:
+          type: boolean
+      required:
+        - id
+        - mailboxAddress
+        - fromAddress
+        - subject
+        - receivedAt
+        - isRead
+        - hasHtml
+
+    MessageDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        mailboxAddress:
+          type: string
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+          nullable: true
+        subject:
+          type: string
+        bodyText:
+          type: string
+          nullable: true
+        bodyHtml:
+          type: string
+          nullable: true
+        receivedAt:
+          type: string
+          format: date-time
+        isRead:
+          type: boolean
+      required:
+        - id
+        - mailboxAddress
+        - fromAddress
+        - subject
+        - receivedAt
+        - isRead
+
+    ListMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageSummary"
+        total:
+          type: integer
+        unread:
+          type: integer
+      required:
+        - messages
+        - total
+        - unread
+
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        keyPrefix:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - name
+        - keyPrefix
+        - createdAt
+
+    ApiKeyWithSecret:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        keyPrefix:
+          type: string
+        key:
+          type: string
+          description: Full API key - only shown once on creation
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - keyPrefix
+        - key
+        - createdAt
+
+    ListApiKeysResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiKey"
+      required:
+        - keys
+
+    CreateApiKeyBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+
+    InboundEmailBody:
+      type: object
+      properties:
+        to:
+          type: string
+          description: Recipient email address
+        from:
+          type: string
+          description: Sender email address
+        fromName:
+          type: string
+          nullable: true
+          description: Sender display name
+        subject:
+          type: string
+        bodyText:
+          type: string
+          nullable: true
+        bodyHtml:
+          type: string
+          nullable: true
+        secret:
+          type: string
+          description: Webhook secret for verification
+      required:
+        - to
+        - from
+        - subject
+        - secret
+
+    InboundEmailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        messageId:
+          type: integer
+          nullable: true
+      required:
+        - success
+
+    StatsResponse:
+      type: object
+      properties:
+        totalMailboxes:
+          type: integer
+        totalMessages:
+          type: integer
+        totalUnread:
+          type: integer
+        domain:
+          type: string
+      required:
+        - totalMailboxes
+        - totalMessages
+        - totalUnread
+        - domain
