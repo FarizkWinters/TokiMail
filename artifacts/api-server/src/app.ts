@@ -42,7 +42,7 @@ const frontendDist = path.resolve(
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
   // SPA fallback — semua route non-API dikembalikan ke index.html
-  app.get("*", (_req, res) => {
+  app.get(/.*/, (_req, res) => {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
   logger.info({ frontendDist }, "Serving frontend static files");
