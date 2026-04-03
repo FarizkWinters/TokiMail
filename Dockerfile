@@ -17,4 +17,4 @@ RUN pnpm --filter @workspace/api-server run build
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm --filter @workspace/db run push-force && node artifacts/api-server/dist/index.mjs"]
+CMD ["sh", "-c", "pnpm --filter @workspace/db run init && node artifacts/api-server/dist/index.mjs"]
