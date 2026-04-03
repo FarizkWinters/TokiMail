@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Deploy archives
+*.tar.gz
+*.zip
