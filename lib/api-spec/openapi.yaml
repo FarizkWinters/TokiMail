@@ -208,6 +208,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /mailboxes/{address}/otp:
+    get:
+      operationId: getLatestOTP
+      tags: [messages]
+      summary: Get latest OTP from inbox
+      description: Scans the 10 most recent messages and returns the first OTP code found. Poll this endpoint until `found` is true.
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OTP result (found or not found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OTPResponse"
+        "404":
+          description: Mailbox not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /mailboxes/{address}/messages/{id}/read:
     patch:
       operationId: markMessageRead
@@ -631,6 +657,41 @@ components:
         - id
         - name
         - status
+
+    OTPResponse:
+      type: object
+      properties:
+        found:
+          type: boolean
+          description: Whether an OTP was found in the inbox
+        otp:
+          type: string
+          nullable: true
+          description: The extracted OTP code, or null if not found
+        messageId:
+          type: integer
+          nullable: true
+          description: ID of the message containing the OTP
+        subject:
+          type: string
+          nullable: true
+          description: Subject of the message containing the OTP
+        from:
+          type: string
+          nullable: true
+          description: Sender of the message containing the OTP
+        receivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the OTP message was received
+      required:
+        - found
+        - otp
+        - messageId
+        - subject
+        - from
+        - receivedAt
 
     ListDomainsResponse:
       type: object
