@@ -180,27 +180,28 @@ export default function Home() {
         </div>
       </div>
 
-      {stats && (
-        <div className="grid grid-cols-3 gap-4 border-y border-border py-6">
-          <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1 font-mono">Total Inboxes</div>
-            <div className="text-2xl font-semibold">{stats.totalMailboxes}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1 font-mono">Total Messages</div>
-            <div className="text-2xl font-semibold">{stats.totalMessages}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1 font-mono">Domains</div>
-            <div className="text-sm font-mono text-primary mt-1 flex flex-wrap gap-1">
-              {domains.length > 0
-                ? domains.map(d => <span key={d.id} className="bg-primary/10 px-1.5 py-0.5 rounded text-xs">{d.name}</span>)
-                : <span>{stats.domain}</span>
-              }
-            </div>
+      <div className="border-y border-border py-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+        <div className="shrink-0">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2 font-mono">Available Domains</div>
+          <div className="flex flex-wrap gap-1.5">
+            {domains.length > 0
+              ? domains.map(d => (
+                  <span key={d.id} className="bg-primary/10 border border-primary/20 text-primary px-2.5 py-1 rounded-full font-mono text-xs font-medium">
+                    @{d.name}
+                  </span>
+                ))
+              : <span className="font-mono text-sm text-primary">@{stats?.domain}</span>
+            }
           </div>
         </div>
-      )}
+        <div className="hidden sm:block w-px h-8 bg-border" />
+        <div className="flex flex-wrap gap-6 text-xs text-muted-foreground">
+          <span>✓ No registration required</span>
+          <span>✓ Auto-delete after 7 days</span>
+          <span>✓ Private &amp; anonymous</span>
+          <span>✓ OTP auto-detection</span>
+        </div>
+      </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
