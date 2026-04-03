@@ -291,11 +291,14 @@ export const getGenerateMailboxUrl = () => {
 };
 
 export const generateMailbox = async (
+  body?: { domain?: string },
   options?: RequestInit,
 ): Promise<Mailbox> => {
   return customFetch<Mailbox>(getGenerateMailboxUrl(), {
     ...options,
     method: "POST",
+    body: JSON.stringify(body ?? {}),
+    headers: { "Content-Type": "application/json", ...(options?.headers as Record<string, string> | undefined) },
   });
 };
 
@@ -306,14 +309,14 @@ export const getGenerateMailboxMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof generateMailbox>>,
     TError,
-    void,
+    { domain?: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof generateMailbox>>,
   TError,
-  void,
+  { domain?: string },
   TContext
 > => {
   const mutationKey = ["generateMailbox"];
@@ -327,9 +330,9 @@ export const getGenerateMailboxMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof generateMailbox>>,
-    void
-  > = () => {
-    return generateMailbox(requestOptions);
+    { domain?: string }
+  > = (body) => {
+    return generateMailbox(body, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -351,14 +354,14 @@ export const useGenerateMailbox = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof generateMailbox>>,
     TError,
-    void,
+    { domain?: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof generateMailbox>>,
   TError,
-  void,
+  { domain?: string },
   TContext
 > => {
   return useMutation(getGenerateMailboxMutationOptions(options));

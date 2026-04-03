@@ -61,7 +61,7 @@ export default function Home() {
   };
 
   const handleGenerate = () => {
-    generateMailbox.mutate({ data: { domain: activeDomain } } as never, {
+    generateMailbox.mutate({ domain: activeDomain }, {
       onSuccess: (data) => {
         toast({ title: "Mailbox generated" });
         queryClient.invalidateQueries({ queryKey: getListMailboxesQueryKey() });
