@@ -25,10 +25,15 @@ async function init() {
         "id" serial PRIMARY KEY,
         "address" text NOT NULL UNIQUE,
         "name" text,
+        "session_id" text,
         "created_at" timestamp with time zone NOT NULL DEFAULT now(),
         "expires_at" timestamp with time zone,
         "last_activity" timestamp with time zone
       )
+    `);
+
+    await client.query(`
+      ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "session_id" text
     `);
 
     await client.query(`

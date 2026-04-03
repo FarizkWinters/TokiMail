@@ -45,7 +45,12 @@ router.get("/domains", async (_req, res): Promise<void> => {
 });
 
 router.get("/mailboxes", async (req, res): Promise<void> => {
-  const mailboxes = await db.select().from(mailboxesTable).orderBy(mailboxesTable.createdAt);
+  const sessionId = req.headers["x-session-id"] as string | undefined;
+
+  const query = db.select().from(mailboxesTable).orderBy(mailboxesTable.createdAt);
+  const mailboxes = sessionId
+    ? await db.select().from(mailboxesTable).where(eq(mailboxesTable.sessionId, sessionId)).orderBy(mailboxesTable.createdAt)
+    : await query;
 
   const withCounts = await Promise.all(
     mailboxes.map(async (mb) => {
@@ -71,6 +76,7 @@ router.post("/mailboxes/generate", async (req, res): Promise<void> => {
   const localPart = generateRandomLocalPart();
   const body = req.body as { domain?: string } | undefined;
   let domain = body?.domain ?? DEFAULT_DOMAIN;
+  const sessionId = req.headers["x-session-id"] as string | undefined;
 
   if (domain !== DEFAULT_DOMAIN) {
     const valid = await isValidDomain(domain);
@@ -84,7 +90,7 @@ router.post("/mailboxes/generate", async (req, res): Promise<void> => {
 
   const [mailbox] = await db
     .insert(mailboxesTable)
-    .values({ address })
+    .values({ address, sessionId: sessionId ?? null })
     .returning();
 
   res.status(201).json(GetMailboxResponse.parse({ ...mailbox!, messageCount: 0, unreadCount: 0 }));
@@ -98,6 +104,7 @@ router.post("/mailboxes", async (req, res): Promise<void> => {
   }
 
   const domain = parsed.data.domain ?? DEFAULT_DOMAIN;
+  const sessionId = req.headers["x-session-id"] as string | undefined;
 
   if (domain !== DEFAULT_DOMAIN) {
     const valid = await isValidDomain(domain);
@@ -123,7 +130,7 @@ router.post("/mailboxes", async (req, res): Promise<void> => {
 
   const [mailbox] = await db
     .insert(mailboxesTable)
-    .values({ address, name })
+    .values({ address, name, sessionId: sessionId ?? null })
     .returning();
 
   res.status(201).json(GetMailboxResponse.parse({ ...mailbox!, messageCount: 0, unreadCount: 0 }));

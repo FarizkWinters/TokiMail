@@ -6,6 +6,7 @@ export const mailboxesTable = pgTable("mailboxes", {
   id: serial("id").primaryKey(),
   address: text("address").notNull().unique(),
   name: text("name"),
+  sessionId: text("session_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   lastActivity: timestamp("last_activity", { withTimezone: true }),
