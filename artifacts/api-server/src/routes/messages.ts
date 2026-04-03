@@ -36,7 +36,7 @@ router.get("/mailboxes/:address/messages", async (req, res): Promise<void> => {
     .select()
     .from(messagesTable)
     .where(eq(messagesTable.mailboxAddress, params.data.address))
-    .orderBy(messagesTable.receivedAt);
+    .orderBy(desc(messagesTable.receivedAt));
 
   const summaries = messages.map((m) => ({
     ...m,
