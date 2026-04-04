@@ -22,7 +22,6 @@ async function runCleanup() {
     await db.execute(sql`
       DELETE FROM mailboxes
       WHERE created_at < ${cutoff}
-      AND id NOT IN (SELECT DISTINCT mailbox_address FROM messages LIMIT 1)
       AND address NOT IN (SELECT mailbox_address FROM messages)
     `);
   } catch (err) {

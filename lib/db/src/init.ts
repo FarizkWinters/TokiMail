@@ -32,9 +32,7 @@ async function init() {
       )
     `);
 
-    await client.query(`
-      ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "session_id" text
-    `);
+    await client.query(`ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "session_id" text`);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "messages" (
@@ -53,13 +51,22 @@ async function init() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "api_keys" (
         "id" serial PRIMARY KEY,
-        "key" text NOT NULL UNIQUE,
+        "key_hash" text NOT NULL UNIQUE,
+        "key_prefix" text NOT NULL,
         "name" text NOT NULL,
         "created_at" timestamp with time zone NOT NULL DEFAULT now(),
-        "last_used_at" timestamp with time zone,
-        "is_active" boolean NOT NULL DEFAULT true
+        "last_used_at" timestamp with time zone
       )
     `);
+
+    await client.query(`ALTER TABLE "api_keys" ADD COLUMN IF NOT EXISTS "key_hash" text`);
+    await client.query(`ALTER TABLE "api_keys" ADD COLUMN IF NOT EXISTS "key_prefix" text`);
+
+    await client.query(`
+      UPDATE "api_keys"
+      SET "key_hash" = "key", "key_prefix" = LEFT("key", 12)
+      WHERE "key_hash" IS NULL AND "key" IS NOT NULL
+    `).catch(() => {});
 
     console.log("Database tables ready.");
   } finally {
