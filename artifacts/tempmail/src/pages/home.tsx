@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Copy, Plus, RefreshCw, Mail as MailIcon, Trash2, ArrowRight, ChevronDown, Globe } from "lucide-react";
+import { Copy, Plus, RefreshCw, Mail as MailIcon, Trash2, ArrowRight, ChevronDown, Globe, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ export default function Home() {
   const [localPart, setLocalPart] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("");
   const [showDomainPicker, setShowDomainPicker] = useState(false);
+  const [findAddress, setFindAddress] = useState("");
 
   const { data: domainsData, isLoading: domainsLoading } = useListDomains({
     query: { queryKey: getListDomainsQueryKey() }
@@ -75,6 +76,13 @@ export default function Home() {
     e.stopPropagation();
     navigator.clipboard.writeText(text);
     toast({ title: "Copied to clipboard" });
+  };
+
+  const handleFindAddress = () => {
+    const addr = findAddress.trim();
+    if (!addr) return;
+    const full = addr.includes("@") ? addr : `${addr}@${activeDomain}`;
+    setLocation(`/inbox/${full}`);
   };
 
   const handleDelete = (address: string, e: React.MouseEvent) => {
@@ -176,6 +184,26 @@ export default function Home() {
           >
             <Plus className="size-4 mr-2" />
             Generate New Mailbox
+          </Button>
+        </div>
+      </div>
+
+      {/* Find mailbox by address */}
+      <div className="bg-card border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
+          <Search className="size-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Open mailbox by address</span>
+        </div>
+        <div className="flex flex-1 items-center gap-2">
+          <Input
+            className="font-mono flex-1"
+            placeholder="address@domain.com or just username"
+            value={findAddress}
+            onChange={(e) => setFindAddress(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleFindAddress()}
+          />
+          <Button variant="outline" onClick={handleFindAddress} disabled={!findAddress.trim()}>
+            Open
           </Button>
         </div>
       </div>
