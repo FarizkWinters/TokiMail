@@ -2,8 +2,10 @@ export function extractOTP(text: string): string | null {
   if (!text) return null;
 
   const patterns = [
+    /(?:kode|code|otp|pin|token|verification code|kode verifikasi|verifikasi)[^\w]*([A-Z0-9]{2,5}-[A-Z0-9]{2,5})/i,
     /(?:kode|code|otp|pin|token|verification code|kode verifikasi|verifikasi)[^\d]*(\d{4,8})/i,
     /(\d{4,8})[^\d]*(?:is your|adalah|merupakan)[^\d]*(?:kode|code|otp|pin|token|verification)/i,
+    /^[ \t]*([A-Z0-9]{2,6}-[A-Z0-9]{2,6})[ \t]*$/m,
     /(?:^|[\s\-:])(\d{6})(?:[\s\-,.]|$)/m,
     /(?:^|[\s\-:])(\d{4})(?:[\s\-,.]|$)/m,
     /(?:^|[\s\-:])(\d{8})(?:[\s\-,.]|$)/m,
