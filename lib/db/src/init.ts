@@ -68,6 +68,12 @@ async function init() {
       WHERE "key_hash" IS NULL AND "key" IS NOT NULL
     `).catch(() => {});
 
+    await client.query(`ALTER TABLE "api_keys" DROP COLUMN IF EXISTS "key"`).catch(() => {});
+    await client.query(`ALTER TABLE "api_keys" DROP COLUMN IF EXISTS "is_active"`).catch(() => {});
+
+    await client.query(`ALTER TABLE "api_keys" ALTER COLUMN "key_hash" SET NOT NULL`).catch(() => {});
+    await client.query(`ALTER TABLE "api_keys" ALTER COLUMN "key_prefix" SET NOT NULL`).catch(() => {});
+
     console.log("Database tables ready.");
   } finally {
     client.release();
