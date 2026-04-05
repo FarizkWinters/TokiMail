@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Copy, Plus, RefreshCw, Mail as MailIcon, Trash2, ArrowRight, ChevronDown, Globe, Search } from "lucide-react";
+import { Copy, Plus, RefreshCw, Mail as MailIcon, Trash2, ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -21,12 +21,11 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [localPart, setLocalPart] = useState("");
+  const [addressInput, setAddressInput] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("");
   const [showDomainPicker, setShowDomainPicker] = useState(false);
-  const [findAddress, setFindAddress] = useState("");
 
-  const { data: domainsData, isLoading: domainsLoading } = useListDomains({
+  const { data: domainsData } = useListDomains({
     query: { queryKey: getListDomainsQueryKey() }
   });
 
@@ -46,19 +45,30 @@ export default function Home() {
   const generateMailbox = useGenerateMailbox();
   const deleteMailbox = useDeleteMailbox();
 
-  const handleCreateCustom = () => {
-    if (!localPart.trim()) return;
-    createMailbox.mutate({ data: { localPart: localPart.trim(), domain: activeDomain } }, {
-      onSuccess: (data) => {
-        toast({ title: "Mailbox created" });
-        queryClient.invalidateQueries({ queryKey: getListMailboxesQueryKey() });
-        setLocation(`/inbox/${data.address}`);
-      },
-      onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-        toast({ title: msg ?? "Failed to create mailbox", variant: "destructive" });
-      }
-    });
+  const isFullAddress = addressInput.includes("@");
+  const trimmed = addressInput.trim();
+  const resolvedAddress = isFullAddress ? trimmed : (trimmed ? `${trimmed}@${activeDomain}` : "");
+  const mode: "idle" | "create" | "open" = !trimmed ? "idle" : isFullAddress ? "open" : "create";
+
+  const handleSubmit = () => {
+    if (mode === "open") {
+      setLocation(`/inbox/${resolvedAddress}`);
+    } else if (mode === "create") {
+      const parts = resolvedAddress.split("@");
+      const localPart = parts[0] ?? "";
+      const domain = parts[1] ?? activeDomain;
+      createMailbox.mutate({ data: { localPart, domain } }, {
+        onSuccess: (data) => {
+          toast({ title: "Mailbox created" });
+          queryClient.invalidateQueries({ queryKey: getListMailboxesQueryKey() });
+          setLocation(`/inbox/${data.address}`);
+        },
+        onError: (err: unknown) => {
+          const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+          toast({ title: msg ?? "Failed to create mailbox", variant: "destructive" });
+        }
+      });
+    }
   };
 
   const handleGenerate = () => {
@@ -76,13 +86,6 @@ export default function Home() {
     e.stopPropagation();
     navigator.clipboard.writeText(text);
     toast({ title: "Copied to clipboard" });
-  };
-
-  const handleFindAddress = () => {
-    const addr = findAddress.trim();
-    if (!addr) return;
-    const full = addr.includes("@") ? addr : `${addr}@${activeDomain}`;
-    setLocation(`/inbox/${full}`);
   };
 
   const handleDelete = (address: string, e: React.MouseEvent) => {
@@ -105,67 +108,81 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Domain Selector */}
-      {domains.length > 1 && (
-        <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
-          <Globe className="size-4 text-primary shrink-0" />
-          <span className="text-sm text-muted-foreground">Domain:</span>
-          <div className="relative">
-            <button
-              onClick={() => setShowDomainPicker(!showDomainPicker)}
-              className="flex items-center gap-2 font-mono text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              {activeDomain}
-              <ChevronDown className={`size-3.5 transition-transform ${showDomainPicker ? 'rotate-180' : ''}`} />
-            </button>
-            {showDomainPicker && (
-              <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg overflow-hidden min-w-[200px]">
-                {domains.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => { setSelectedDomain(d.name); setShowDomainPicker(false); }}
-                    className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-mono hover:bg-muted/50 transition-colors text-left ${activeDomain === d.name ? 'text-primary bg-primary/5' : 'text-foreground'}`}
-                  >
-                    <span>{d.name}</span>
-                    {activeDomain === d.name && <span className="text-xs text-primary ml-4">active</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {domainsLoading && <span className="text-xs text-muted-foreground animate-pulse ml-auto">Loading domains...</span>}
-          {!domainsLoading && (
-            <span className="text-xs text-muted-foreground ml-auto">{domains.length} domain{domains.length !== 1 ? 's' : ''} available</span>
-          )}
-        </div>
-      )}
-
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Custom Address */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Custom Address</h2>
-          <div className="flex items-center gap-2 mb-4">
+        {/* Smart unified input */}
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {mode === "open" ? "Open Inbox" : "Custom Address"}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              {mode === "open"
+                ? "Navigate directly to an existing mailbox"
+                : "Type a username to create, or paste a full address to open"}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Input
-                placeholder="developer"
+                placeholder="username or full@address.com"
                 className="font-mono pr-3"
-                value={localPart}
-                onChange={(e) => setLocalPart(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreateCustom()}
+                value={addressInput}
+                onChange={(e) => setAddressInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               />
             </div>
-            <Button 
-              onClick={handleCreateCustom} 
-              disabled={!localPart.trim() || createMailbox.isPending}
+
+            {/* Domain picker — only show when not full address mode */}
+            {!isFullAddress && domains.length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowDomainPicker(!showDomainPicker)}
+                  className="flex items-center gap-1.5 h-10 px-3 border border-border rounded-md bg-muted/50 font-mono text-sm text-primary hover:bg-muted transition-colors whitespace-nowrap"
+                >
+                  @{activeDomain}
+                  <ChevronDown className={`size-3 transition-transform ${showDomainPicker ? 'rotate-180' : ''}`} />
+                </button>
+                {showDomainPicker && (
+                  <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg overflow-hidden min-w-[180px]">
+                    {domains.map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={() => { setSelectedDomain(d.name); setShowDomainPicker(false); }}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-mono hover:bg-muted/50 transition-colors text-left ${activeDomain === d.name ? 'text-primary bg-primary/5' : 'text-foreground'}`}
+                      >
+                        @{d.name}
+                        {activeDomain === d.name && <span className="size-1.5 rounded-full bg-primary ml-2" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button
+              onClick={handleSubmit}
+              disabled={mode === "idle" || createMailbox.isPending}
+              variant={mode === "open" ? "outline" : "default"}
             >
-              Create
+              {mode === "open" ? "Open" : "Create"}
             </Button>
           </div>
-          <div className="text-xs text-muted-foreground font-mono">
-            {localPart.trim() ? (
-              <span className="text-primary">{localPart.trim()}@{activeDomain}</span>
-            ) : (
-              <span>yourname@{activeDomain}</span>
+
+          {/* Preview */}
+          <div className="text-xs font-mono">
+            {mode === "create" && (
+              <span className="text-muted-foreground">
+                Will create: <span className="text-primary">{resolvedAddress}</span>
+              </span>
+            )}
+            {mode === "open" && (
+              <span className="text-muted-foreground">
+                Will open: <span className="text-primary">{resolvedAddress}</span>
+              </span>
+            )}
+            {mode === "idle" && (
+              <span className="text-muted-foreground">yourname@{activeDomain}</span>
             )}
           </div>
         </div>
@@ -173,37 +190,22 @@ export default function Home() {
         {/* Random Address */}
         <div className="bg-card border border-primary/20 rounded-xl p-6 shadow-sm flex flex-col items-start justify-center relative overflow-hidden">
           <div className="absolute -right-12 -top-12 size-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
-          <h2 className="text-lg font-semibold mb-2 text-foreground">Random Address</h2>
+          <h2 className="text-lg font-semibold mb-2">Random Address</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Generate an instantly available inbox at <span className="font-mono text-primary">@{activeDomain}</span>.
+            Generate an instantly available inbox at{" "}
+            {domains.length > 1 ? (
+              <span className="font-mono text-primary">@{activeDomain}</span>
+            ) : (
+              <span className="font-mono text-primary">@{activeDomain}</span>
+            )}.
           </p>
-          <Button 
-            onClick={handleGenerate} 
+          <Button
+            onClick={handleGenerate}
             disabled={generateMailbox.isPending}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="size-4 mr-2" />
             Generate New Mailbox
-          </Button>
-        </div>
-      </div>
-
-      {/* Find mailbox by address */}
-      <div className="bg-card border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="flex items-center gap-2 shrink-0">
-          <Search className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Open mailbox by address</span>
-        </div>
-        <div className="flex flex-1 items-center gap-2">
-          <Input
-            className="font-mono flex-1"
-            placeholder="address@domain.com or just username"
-            value={findAddress}
-            onChange={(e) => setFindAddress(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleFindAddress()}
-          />
-          <Button variant="outline" onClick={handleFindAddress} disabled={!findAddress.trim()}>
-            Open
           </Button>
         </div>
       </div>
