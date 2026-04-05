@@ -23,15 +23,18 @@ router.post("/inbound", async (req, res): Promise<void> => {
 
   const toAddress = to.toLowerCase().trim();
 
-  const [mailbox] = await db
+  let [mailbox] = await db
     .select()
     .from(mailboxesTable)
     .where(eq(mailboxesTable.address, toAddress));
 
   if (!mailbox) {
-    req.log.info({ to: toAddress }, "Inbound email dropped: mailbox not found");
-    res.json({ success: false, messageId: null });
-    return;
+    const inserted = await db
+      .insert(mailboxesTable)
+      .values({ address: toAddress, sessionId: null })
+      .returning();
+    mailbox = inserted[0]!;
+    req.log.info({ to: toAddress }, "Mailbox auto-created for inbound email");
   }
 
   const [message] = await db
